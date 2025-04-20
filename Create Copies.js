@@ -39,17 +39,20 @@ function createCopies(fileSource, fileDestination, thisSheet, thisTab, setRange,
   setRange = "C5:C6";
   urlColumn = "4";
 
+  var activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var activeSheet = SpreadsheetApp.getActiveSheet();
+
   console.log(`Start createCopies('${fileSource}', '${fileDestination}', '${thisSheet}', '${thisTab}', '${setRange}', '${urlColumn}', '${responseTarget}')`);
   console.time("createCopies() time ");
 
-  let COPY_NAME_COL = getUserInput("Enter the header name for filenames to copy:");
+  const COPY_NAME_COL = getUserInput("Enter the header name for filenames to copy:");
   if (!COPY_NAME_COL) {
     console.error("User input for COPY_NAME_COL was invalid or canceled.");
     return;
   }
   console.log(`COPY_NAME_COL = '${COPY_NAME_COL}'`);
 
-  let COPY_URL_COL = getUserInput("Enter the header name to receive new copy URLs:");
+  const COPY_URL_COL = getUserInput("Enter the header name to receive new copy URLs:");
   if (!COPY_URL_COL) {
     console.error("User input for COPY_URL_COL was invalid or canceled.");
     return;
@@ -77,21 +80,19 @@ function createCopies(fileSource, fileDestination, thisSheet, thisTab, setRange,
   if (!thisSheet) {
     console.warn(`createCopies() was run with a falsy thisSheet parameter: '${thisSheet}'`);
     console.info(`Defaulting thisSheet to the current active spreadsheet.`);
-    thisSheet = SpreadsheetApp.getActiveSpreadsheet();
-    console.warn(`thisSheet name = '${SpreadsheetApp.getActiveSpreadsheet().getName()}'\rthisSheet ID = '${SpreadsheetApp.getActiveSpreadsheet().getId()}'\rthisSheet URL = '${SpreadsheetApp.getActiveSpreadsheet().getUrl()}'`);
-    thisSheet = SpreadsheetApp.getActiveSpreadsheet().getUrl();
+    thisSheet = activeSpreadsheet.getUrl();
+    console.warn(`thisSheet name = '${activeSpreadsheet.getName()}'\rthisSheet ID = '${activeSpreadsheet.getId()}'\rthisSheet URL = '${activeSpreadsheet.getUrl()}'`);
   } else {
-    console.log(`thisSheet name = '${SpreadsheetApp.getActiveSpreadsheet().getName()}'\rthisSheet ID = '${SpreadsheetApp.getActiveSpreadsheet().getId()}'\rthisSheet URL = '${SpreadsheetApp.getActiveSpreadsheet().getUrl()}'`);
+    console.log(`thisSheet name = '${activeSpreadsheet.getName()}'\rthisSheet ID = '${activeSpreadsheet.getId()}'\rthisSheet URL = '${activeSpreadsheet.getUrl()}'`);
   }
 
   if (!thisTab) {
     console.warn(`createCopies() was run with a falsy thisTab parameter: '${thisTab}'`);
     console.info(`Defaulting thisTab to the current open tab.`);
-    thisTab = SpreadsheetApp.getActiveSheet();
-    console.warn(`thisTab name = '${SpreadsheetApp.getActiveSheet().getName()}'\rthisTab ID = '${SpreadsheetApp.getActiveSheet().getSheetId()}'`);
-    thisTab = SpreadsheetApp.getActiveSheet().getName();
+    thisTab = activeSheet.getName();
+    console.warn(`thisTab name = '${activeSheet.getName()}'\rthisTab ID = '${activeSheet.getSheetId()}'`);
   } else {
-    console.log(`thisTab name = '${SpreadsheetApp.getActiveSheet().getName()}'\rthisTab ID = '${SpreadsheetApp.getActiveSheet().getSheetId()}'`);
+    console.log(`thisTab name = '${activeSheet.getName()}'\rthisTab ID = '${activeSheet.getSheetId()}'`);
   }
 
   if (!setRange) {
@@ -113,6 +114,7 @@ function createCopies(fileSource, fileDestination, thisSheet, thisTab, setRange,
   let heads = data.shift();
 
   if (!isValidHeaderRow(heads)) {
+    activeSpreadsheet.toast(`Copy creation failed: Header row must contain at least two unique headers.`);
     console.error(`Header row must contain at least two unique headers. Invalid headers: '${heads}'`);
     return;
   }
@@ -120,6 +122,7 @@ function createCopies(fileSource, fileDestination, thisSheet, thisTab, setRange,
   console.log(`Headers array: '${heads}'`);
 
   if (!heads.includes(COPY_NAME_COL)) {
+    activeSpreadsheet.toast(`Copy creation failed due to missing column header: '${COPY_NAME_COL}'`);
     console.error(`Abort script due to missing column header: '${COPY_NAME_COL}'`);
     return;
   }
@@ -130,9 +133,11 @@ function createCopies(fileSource, fileDestination, thisSheet, thisTab, setRange,
     console.log(`urlColumn parameter and COPY_URL_COL match: '${COPY_URL_COL}' === '${urlColumn}'`);
     urlColumn = heads.indexOf(COPY_URL_COL);
   } else if (urlColumn && (urlColumn - 1) !== heads.indexOf(COPY_URL_COL)) {
+    activeSpreadsheet.toast(`Copy creation failed due to mismatch of url columns:'${COPY_URL_COL}' =/= '${urlColumn}'`);
     console.error(`Abort script due to mismatch of urlColumn parameter and COPY_URL_COL: '${COPY_URL_COL}' !== '${urlColumn}'`);
     return;
   } else if (!urlColumn && !heads.includes(COPY_URL_COL)) {
+    activeSpreadsheet.toast(`Copy creation failed due to missing column header: '${COPY_URL_COL}'`);
     console.error(`Abort script due to missing column header: '${COPY_URL_COL}'`);
     return;
   } else if (!urlColumn && heads.includes(COPY_URL_COL)) {
@@ -146,64 +151,15 @@ function createCopies(fileSource, fileDestination, thisSheet, thisTab, setRange,
     console.log(`Proceedign with urlColumn = '${urlColumn}'`);
     urlColumn = urlColumn;
   } else {
+    activeSpreadsheet.toast(`Copy creation failed.`);
     console.error(`Unknown fatal error occurred.`);
     return;
   }
 
   console.log(`urlColumn = '${urlColumn}'\rindexOf(COPY_URL_COL) = '${heads.indexOf(COPY_URL_COL)}'`);
 
-  /**
-   * Converts a 2D array into an array of objects, mapping column headers to cell values.
-   *
-   * @param {Array<Array<string>>} data A 2D array where the first row contains column headers.
-   * @returns {Array<Object>} An array of objects representing rows with key-value pairs
-   * based on column headers and their corresponding cell values.
-   *
-   * @example
-   * const data = [
-   *   ['Name', 'Age', 'City'],
-   *   ['Alice', '30', 'New York'],
-   *   ['Bob', '25', 'San Francisco']
-   * ];
-   *
-   * const result = convertToObjects(data);
-   * console.log(result);
-   * // Output:
-   * // [
-   * //   { Name: 'Alice', Age: '30', City: 'New York' },
-   * //   { Name: 'Bob', Age: '25', City: 'San Francisco' }
-   * // ]
-   */
-  const obj = data.map(r => (heads.reduce((o, k, i) => (o[k] = r[i] || '', o), {})));
-  const out = [];
-  console.time("Total row processing time");
-  obj.forEach(function (row, rowIdx) {
-    if (row[COPY_NAME_COL] !== '' && row[COPY_URL_COL] === '' && !sheet.isRowHiddenByFilter(rowIdx + 2)) {
-      console.time(`Row '${rowIdx + 2}' processing time `);
-      try {
-        let newFile = template.makeCopy(row[COPY_NAME_COL].toString(), folder);
-        let fileUrl = newFile.getUrl(); // Get the URL of the newly created file
-        sheet.getRange(rowIdx + 2, parseInt(urlColumn)).setValue(String(fileUrl)); // Write the URL to the specified urlColumn in the corresponding row
-        // formSetup(newFile, responseTarget, newTabName = row[COPY_NAME_COL].toString());
+  mapArraysToObjects(data, urlColumn, COPY_NAME_COL, COPY_URL_COL);
 
-        out.push([fileUrl]);
-        console.info(`Copy created for '${row[COPY_NAME_COL]}' (Row ${rowIdx + 2})`);
-      } catch (e) {
-        out.push([e.message] || 'Unknown error occurred');
-        console.error(`Failed to create copy for '${row[COPY_NAME_COL]}' (Row ${rowIdx + 2}). Error: ${e.message}`);
-      } finally {
-        console.timeEnd(`Row '${rowIdx + 2}' processing time `);
-      }
-    } else {
-      if (row[COPY_URL_COL] !== '') {
-        console.log(`Skipping Row ${rowIdx + 2} - Copy already created.`);
-      }
-      if (sheet.isRowHiddenByFilter(rowIdx + 2)) {
-        console.log(`Skipping Row ${rowIdx + 2} - Row hidden by filter.`);
-      }
-      out.push([row[COPY_URL_COL]] || '');
-    }
-  });
   console.timeEnd("Total row processing time");
 
   console.timeEnd("createCopies() time ");
