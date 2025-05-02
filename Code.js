@@ -262,9 +262,9 @@ function retrieveFolders() {
   SpreadsheetApp.getUi().alert('Folders retrieved successfully.');
 }
 
-// console.time(`START: `); // start a process timer
-// console.timeEnd(`END: `); // end a proceess timer
-// console.log(`DEBUG: Constant message, followed by variable: '${e.message}'`); // debug
-// console.info(`INFO: Constant message, followed by variable: '${e.message}'`); // info
-// console.warn(`WARNING: Constant message, followed by variable: '${e.message}'`); // warning
-// console.error(`ERROR: Constant message, followed by variable: '${e.message}'`); // error
+// console.time(`START: `);
+// console.timeEnd(`END: `);
+// console.log(`DEBUG: `);
+// console.info(`INFO: `);
+// console.warn(`WARNING: `);
+// console.error(`ERROR: `);
